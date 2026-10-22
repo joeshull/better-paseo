@@ -138,6 +138,8 @@ const en = {
   rowLabelsLabel: "Label",
   rowLabelsBoth: "Both",
   toolDetailTitle: "Open failed calls",
+  toolCallRollupsTitle: "Tool call rollups",
+  toolCallRollupsDescription: "Fold consecutive tool calls into an expandable summary between messages. Failures, questions and permission waits stay visible.",
   toolDetailDescription: "On, a failed call opens to show its error. A call you opened or closed yourself keeps your choice.",
   pathsTitle: "File paths",
   pathsDescription:
@@ -297,6 +299,8 @@ const zh: SettingsStrings = {
   rowLabelsLabel: "名称",
   rowLabelsBoth: "两者",
   toolDetailTitle: "自动展开失败的调用",
+  toolCallRollupsTitle: "合并工具调用",
+  toolCallRollupsDescription: "将消息之间连续的工具调用折叠为可展开的摘要。失败、问题和权限请求保持可见。",
   toolDetailDescription: "开启后，失败的调用会自动展开并显示错误；你手动展开或折叠过的调用保持原样。",
   pathsTitle: "文件路径",
   pathsDescription: "相对路径从工作区算起，worktree 的主仓库以名称显示。复制时总是得到绝对路径。",
