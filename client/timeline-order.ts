@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useSyncExternalStore, type RefObject } from "react";
 import type { ToolCallView } from "./tools/classify";
 import type { ToolRollupPosition } from "./state/tool-rollup-order";
-import { canRollupTool, groupAdjacentTools, toolGroupKey } from "./tools/group";
+import { groupAdjacentTools, toolGroupKey } from "./tools/group";
 import { hostStacksRows, noteRowGap } from "./host-row-gap";
 
 /**
@@ -81,7 +81,7 @@ interface Entry {
   /** Where the item is drawn, in the window; null when unknown. */
   measure?: () => ViewBox | null;
   tool?: ToolCallView;
-  /** Undefined: original file grouping; null: rollups on, source order unknown/unsafe. */
+  /** Undefined: original file grouping; null: rollups on, source order unknown. */
   rollup?: ToolRollupPosition | null;
   /**
    * Found below another row of its call in the same column (`hostDuplicates`).
@@ -538,7 +538,6 @@ function updateTool(agentId: string, entry: Entry, previous: ToolCallView | unde
   // A call drawn more than once may now lead, or trail, another row of it.
   if (
     timeline.stale || previous?.callId !== tool.callId || toolGroupKey(previous) !== toolGroupKey(tool) ||
-    (entry.rollup !== undefined && previous && canRollupTool(previous) !== canRollupTool(tool)) ||
     (tool.callId !== undefined && timeline.repeated.has(tool.callId))
   ) {
     invalidate(timeline);
@@ -652,7 +651,7 @@ export function useTimelineToolGroup(
   const group = useSyncExternalStore(subscribe, getGroup, getGroup);
   const getRollupHead = useCallback(() => {
     const slot = slotOf();
-    return entry.rollup !== undefined && !superseded() && slot && slot.run.calls.length > 1
+    return entry.rollup && !superseded() && slot
       ? slot.run.calls[0]!.callId ?? null : null;
   }, [slotOf, superseded, entry]);
   const rollupHead = useSyncExternalStore(subscribe, getRollupHead, getRollupHead);

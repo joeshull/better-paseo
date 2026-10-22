@@ -48,27 +48,27 @@ try {
       element.style.boxSizing = "border-box";
       element.style.width = compact ? "440px" : "940px";
     }, compact);
-    const summary = scene.getByRole("button", { name: "Called 5 tools", exact: true });
+    const summary = scene.getByRole("button", { name: "Called 7 tools · 1 running · 1 failed", exact: true });
     await summary.waitFor();
     assert.equal(await summary.getAttribute("aria-expanded"), "false");
     const heights = await scene.locator('[data-testid^="rollup-source-"]').evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
-    assert.equal(heights.length, 5);
-    assert.deepEqual(heights.slice(1), [0, 0, 0, 0], "collapsed source wrappers must leave no blank gaps");
+    assert.equal(heights.length, 7);
+    assert.deepEqual(heights.slice(1), [0, 0, 0, 0, 0, 0], "collapsed source wrappers must leave no blank gaps");
     const stem = `${theme}-${compact ? "compact" : "desktop"}`;
     await scene.screenshot({ path: path.join(out, `${stem}-collapsed.png`) });
     await summary.click();
     assert.equal(await summary.getAttribute("aria-expanded"), "true");
     assert.equal(await scene.locator('[data-testid^="rollup-source-"]').evaluateAll((rows) =>
-      rows.filter((row) => row.getBoundingClientRect().height > 0).length), 5);
-    assert.ok(await scene.getByRole("button").count() > 5, "existing rich card controls are mounted");
+      rows.filter((row) => row.getBoundingClientRect().height > 0).length), 7);
+    assert.ok(await scene.getByRole("button").count() > 1, "existing rich card controls are mounted");
+    await scene.getByText("npm run check:hermes", { exact: true }).first().waitFor();
     await scene.screenshot({ path: path.join(out, `${stem}-expanded.png`) });
     await summary.click();
     assert.equal(await summary.getAttribute("aria-expanded"), "false");
     await scene.getByTestId("rollup-next-update").waitFor();
-    // Failed rich card remains outside the summary before/after collapse.
-    await scene.getByText("npm run check:hermes", { exact: true }).first().waitFor();
+    assert.equal(await scene.getByText("npm run check:hermes", { exact: true }).count(), 0);
     assert.deepEqual(errors, []);
-    console.log(`PASS ${stem}: hidden wrapper heights=${heights.slice(1).join(",")}; expansion reveals rich controls; failure stays visible`);
+    console.log(`PASS ${stem}: hidden wrapper heights=${heights.slice(1).join(",")}; expansion reveals every card; running/failure counts stay visible`);
     await page.close();
   }
   console.log(`Screenshots: ${out}`);

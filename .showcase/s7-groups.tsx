@@ -170,7 +170,7 @@ function Tool({ view, tokens, compact, expanded = false }: { view: ToolCallView;
 function Rollups({ tokens, compact }: { tokens: ExtendedThemeTokens; compact: boolean }) {
   const [expanded, setExpanded] = useState(false);
   useEffect(installToolRollupSpacing, []);
-  const calls = TURN_TOOLS.slice(0, 5);
+  const calls = [...TURN_TOOLS.slice(0, 5), TURN_TOOLS[8]!, TURN_TOOLS[9]!];
   return <PathContext.Provider value={PATHS}>
     <View>
       <Text style={{ color: tokens.foreground, marginBottom: 16 }}>I’ll inspect the parser and check the types.</Text>
@@ -185,8 +185,7 @@ function Rollups({ tokens, compact }: { tokens: ExtendedThemeTokens; compact: bo
           </div>
         </View>
       </View>)}
-      <Text testID="rollup-next-update" style={{ color: tokens.foreground, marginBottom: 16 }}>The types pass. The next check failed:</Text>
-      <Tool view={TURN_TOOLS[8]!} tokens={tokens} compact={compact} />
+      <Text testID="rollup-next-update" style={{ color: tokens.foreground, marginBottom: 16 }}>The types pass; one check failed and another is running. Expand the tools for details.</Text>
     </View>
   </PathContext.Provider>;
 }

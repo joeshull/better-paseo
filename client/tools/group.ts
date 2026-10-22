@@ -1,14 +1,25 @@
 import type { ToolCallView } from "./classify";
 import { summarizeTool, type ToolSummary } from "./summarize";
 import type { ToolRollupPosition } from "../state/tool-rollup-order";
+import { readPermissionRequest } from "./agent-status";
 
-/** Interactive/attention cards never disappear behind a general summary. */
+/** Category and result never affect membership; source identity is required. */
 export function canRollupTool(view: ToolCallView): boolean {
-  return Boolean(view.callId) && view.status !== "failed" && !view.error && !view.rejected && !view.questionData &&
-    !view.agentStatus && !view.hub && !view.paseo &&
-    view.tool !== "plan" && view.tool !== "sub_agent" && view.tool !== "activity" &&
-    !/question|askuser|request_user_input|permission|exitplan|enterplan/i.test(view.name ?? "") &&
-    summarizeToolCall(view).tone !== "danger";
+  return Boolean(view.callId);
+}
+
+export function toolRollupFailed(view: ToolCallView): boolean {
+  return view.status === "failed" || view.rollupStatus === "error" ||
+    Boolean(view.error && !view.rejected) || summarizeToolCall(view).tone === "danger";
+}
+
+/** These are the two ToolBody paths that render answer/permission controls. */
+export function toolPermissionTargets(view: ToolCallView): string[] {
+  const status = view.agentStatus;
+  const notification = status?.status === "needs permission" && readPermissionRequest(status.body)?.requestId
+    ? [status.agentId] : [];
+  const list = view.paseo?.agentOperation?.permissions?.filter((entry) => entry.requestId).map((entry) => entry.agentId) ?? [];
+  return [...new Set([...notification, ...list])];
 }
 
 /** File operations share a header only when both the operation and path match. */

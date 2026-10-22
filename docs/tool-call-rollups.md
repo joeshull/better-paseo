@@ -1,17 +1,26 @@
 # Tool call rollup prototype
 
 The **Tool call rollups** switch is in Better Paseo settings under Tools. It
-defaults to Off. When On, two or more consecutive safe tool calls, including
-different operations and files, share an expandable **Called N tools** header.
-Running tools add a running count. Expansion reveals the existing rich cards
+defaults to Off. When On, all consecutive tool calls, including different
+operations, files and result statuses, share an expandable **Called N tools**
+header. A single call uses **Called 1 tool**. Running and failed counts remain
+visible while collapsed. Expansion reveals the existing rich cards
 in their original source slots, with their own copy, preview and detail controls.
 
 Assistant updates, user prompts, reasoning and every other source timeline item
 end a run. Native assistant/user renderers remain native when their existing
-enhancement switches are Off. Errors, failed/rejected/canceled calls, questions,
-plans and agent interaction cards stay outside rollups. An agent waiting for
-permission shows its tool cards individually; host permission controls remain
-host-owned.
+enhancement switches are Off. Failed/error/rejected/canceled calls, question and
+plan transcripts, Paseo/subagent/hub/activity tools and generic/MCP calls all
+participate. Waiting for permission does not ungroup tools; independent native
+question/permission controls remain host-owned and operable.
+
+There is one visibility exception, without changing group membership or count:
+child-agent permission notifications and pending-permission list cards render
+their own `PermissionActions`/`PermissionQuestionForm` controls. Those specific
+cards remain visible and expanded while the relevant child agent waits (or its
+snapshot is unknown, matching the controls' existing rule). They collapse back
+into the run when the child snapshot no longer reports a permission wait.
+Ordinary question transcripts are read-only and can stay collapsed.
 
 The persistent field is `toolCallRollups: boolean`, with missing or invalid
 values falling back to `false`, in the existing `presentation` settings document
@@ -56,7 +65,8 @@ CHROME_PATH=/home/joe/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome n
 The smoke builds the existing showcase, tests its rollup scene with real summary
 and tool-card components at desktop and 440px compact widths in both themes,
 checks hidden source wrappers have zero height, and exercises expansion and
-collapse with a failure still visible. Eight screenshots go under
+collapse with failure/running counts visible and failed cards inspectable after
+expansion. Eight screenshots go under
 `/home/joe/.paseo/worktrees/0ank7g6x/tool-call-rollups/.showcase/out/rollups`.
 It simulates the observed Paseo 0.12 wrapper shape; it does not test a deployed
 plugin or connect to a daemon. The source adjacency and live renderer tests

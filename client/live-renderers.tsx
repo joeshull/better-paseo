@@ -6,7 +6,7 @@ import { ChatComposerContext, type ComposerTimelineItemProps as PluginTimelineIt
 import type { PluginTheme } from "@getpaseo/plugin";
 import { useThemeTokens } from "./components/theme-tokens";
 import { ToolCallout } from "./components/tool-callouts";
-import { ToolRollup } from "./components/tool-rollup";
+import { ToolRollup, ToolRollupControls } from "./components/tool-rollup";
 import { useToolRollupPosition, type ToolRollupPosition } from "./state/tool-rollup-order";
 import { ReasoningCard } from "./components/reasoning-trace";
 import { createReasoningSegmenter } from "./reasoning/segment";
@@ -178,7 +178,7 @@ function LiveToolCallRendererBody({
   useSelectionActions(tokens, preferences.selectionActions);
   const data = item.data;
 
-  const view = useMemo(() => classifyTool(data), [data]);
+  const view = useMemo(() => ({ ...classifyTool(data), rollupStatus: data.status }), [data]);
   // The host rewrites a call's timestamp as its result arrives, but keeps
   // its timeline slot. Ordering by that update time can move the gap from
   // this row onto the call below it while the turn is still streaming.
@@ -199,7 +199,8 @@ function LiveToolCallRendererBody({
     rollup,
   );
   const [rollupExpanded, setRollupExpanded] = useDisclosure(`${agentId}:tool-rollup:${rollupHead ?? data.callId}`, false);
-  const showCard = rollupHead ? rollupExpanded : group !== null;
+  const [rollupControlsVisible, setRollupControlsVisible] = useState(false);
+  const showCard = rollupHead ? rollupExpanded || rollupControlsVisible : group !== null;
   const showSummary = Boolean(rollupHead && group);
   const groupFailed = group?.some((call) => call.status === "failed") ?? false;
 
@@ -263,6 +264,7 @@ function LiveToolCallRendererBody({
         hostStacks ? 0 : copiesBelow, copiesBelowHeight,
       )}
     >
+      {rollupHead ? <ToolRollupControls view={view} onChange={setRollupControlsVisible} /> : null}
       {showCard || showSummary ? (
         <>
           {probe.node}
@@ -276,7 +278,7 @@ function LiveToolCallRendererBody({
               groupCalls={!rollupHead && group && group.length > 1 ? group : undefined}
               tokens={tokens}
               compact={layout.compact}
-              expanded={expanded}
+              expanded={expanded || rollupControlsVisible}
               onExpandedChange={setExpanded}
               imageFile={imageFile}
               requestImage={readsImage ? markPreviewed : undefined}
@@ -893,12 +895,12 @@ const NoticeMemo = memo(LiveNoticeRendererBody, noticePropsEqual);
 const UserMessageMemo = memo(LiveUserMessageRendererBody, userMessagePropsEqual);
 
 /** A plain agent message reaches the transformer without its sender; its row reads it back. */
-function SenderlessAgentMessage(props: PluginTimelineItemProps<LiveToolCallPayload> & { callId: string }) {
-  const { callId, ...rest } = props;
+function SenderlessAgentMessage(props: PluginTimelineItemProps<LiveToolCallPayload> & { callId: string; rollups: boolean }) {
+  const { callId, rollups, ...rest } = props;
   const sender = useAgentMessageSender(props.agentId, callId);
   const item = useMemo(() => (sender ? { ...props.item, data: { ...props.item.data, agentMessage: sender } } : props.item),
     [props.item, sender]);
-  return <ToolCallMemo {...rest} item={item} />;
+  return rollups ? <RollupToolCall {...rest} item={item} /> : <ToolCallMemo {...rest} item={item} />;
 }
 
 export function LiveToolCallRenderer(props: PluginTimelineItemProps<LiveToolCallPayload>) {
@@ -907,7 +909,7 @@ export function LiveToolCallRenderer(props: PluginTimelineItemProps<LiveToolCall
   return <BlockPlacement agentId={props.agentId} timestamp={props.timestamp} kind="tool">
     <ChatComposerContext.Provider value={props.composer}>
       {data.name === "agent_message" && !data.agentMessage && data.callId
-        ? <SenderlessAgentMessage {...props} callId={data.callId} />
+        ? <SenderlessAgentMessage {...props} callId={data.callId} rollups={preferences.toolCallRollups} />
         : preferences.toolCallRollups ? <RollupToolCall {...props} /> : <ToolCallMemo {...props} />}
     </ChatComposerContext.Provider>
   </BlockPlacement>;
@@ -915,11 +917,7 @@ export function LiveToolCallRenderer(props: PluginTimelineItemProps<LiveToolCall
 
 function RollupToolCall(props: PluginTimelineItemProps<LiveToolCallPayload>) {
   const position = useToolRollupPosition(props.agentId, props.item.data.callId);
-  const waiting = useAgent(props.agentId, (agent) => agent.attentionReason === "permission");
-  const data = props.item.data;
-  const safe = waiting === false && (data.status === "running" || data.status === "completed") &&
-    !data.error && data.approved !== false;
-  return <ToolCallMemo {...props} rollup={safe ? position : null} />;
+  return <ToolCallMemo {...props} rollup={position} />;
 }
 
 export function LiveReasoningRenderer(props: PluginTimelineItemProps<LiveReasoningPayload>) {
