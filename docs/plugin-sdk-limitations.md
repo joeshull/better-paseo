@@ -140,3 +140,11 @@ evidence and the workaround this plugin uses; the user-facing summary is the REA
     React Native's `Alert` on iOS and Android, Electron's undocumented
     `window.paseoDesktop.dialog.ask` on desktop, and `confirm()` in a browser
     (`client/components/confirm-dialog.ts`).
+22. **No host slot-hiding or grouped projection API.** The opt-in
+    [tool call rollups](tool-call-rollups.md) use SDK source order and mounted rows;
+    counts can change or split under virtualization. Bounded reads leave unknown or
+    incomplete history standalone. Web/desktop CSS hides explicitly marked empty
+    member wrappers, depending on host shape and `:has`; native outer margins can
+    remain. A source-preserving grouped projection/slot-hiding API is the upgrade
+    path. The rollup switch updates renderer state; it does not invalidate cached
+    transformer results for other preferences.
