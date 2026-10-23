@@ -55,15 +55,21 @@ limits below.
 - Counts describe **mounted, source-adjacent calls**, not an entire historical
   turn. Virtualization can split a run and change its count/head as cards mount
   or leave. Missing members are never invented or pulled outside that window.
-- On Paseo 0.12 web/desktop, the containing `agent-chat-scroll` viewport node
-  identifies each mounted window, including stacked panes. Source order remains
-  SDK-owned; the DOM marker supplies only window identity. This depends on the
-  observed host marker. Without it, grouping uses measured left/width columns;
-  asynchronous native measurements are retained and hidden slots keep their last
+- On web/desktop, the containing `agent-chat-scroll` viewport node identifies
+  each mounted window, including stacked panes. On native refs exposing public
+  `parentElement` and `id` (Paseo 0.13-beta.1 / React Native 0.86.3), the containing
+  `agent-chat-scroll-native-virtualized` element supplies the same identity.
+  Source order remains SDK-owned; ancestry supplies only window identity.
+  These lookups depend on the observed host markers. Legacy native refs
+  (including Paseo 0.12's default refs) or missing markers return no identity,
+  preserving the measured left/width fallback. Asynchronous native measurements
+  are retained and hidden slots keep their last
   positive bounds. Duplicate copies that cannot be assigned to distinct windows
-  remain visible as ordinary cards, while unrelated runs still group. Native has
-  no public pane ID: equal-column stacked windows with disjoint call IDs cannot
-  be fully distinguished by that fallback. This is not full native pane acceptance.
+  remain visible as ordinary cards, while unrelated runs still group. With legacy
+  refs, equal-column stacked windows with disjoint call IDs cannot be fully
+  distinguished by that fallback. Public-ref
+  fixtures exercise separate viewports and retained hidden views; they do not
+  establish a supported native co-mount sequence or device acceptance.
 - Web/desktop CSS hides only host wrappers containing explicitly marked empty
   rollup members, including the observed `display:contents` bridge. Grouping does
   not derive call order from the DOM. The spacing depends on the host wrapper shape and browser
