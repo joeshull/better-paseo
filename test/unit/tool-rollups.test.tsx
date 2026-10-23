@@ -41,6 +41,7 @@ vi.mock("../../client/image-file", async (original) => ({ ...await original<obje
 await import("./helpers/quiet-renderer");
 const { default: TestRenderer, act } = await import("react-test-renderer");
 const { LiveToolCallRenderer } = await import("../../client/live-renderers");
+const { toolRollupWindow } = await import("../../client/web");
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const mounted = new Set<ReturnType<typeof TestRenderer.create>>();
 function mount(node: React.ReactElement, options?: Parameters<typeof TestRenderer.create>[1]) {
@@ -80,6 +81,7 @@ function measuredColumns(columns: number[], visible = () => true, deliver = (cal
     const left = columns[next++];
     if (left === undefined) throw new Error("Missing fixture column");
     return { closest: (selector: string) => selector === '[data-testid="agent-chat-scroll"]' ? window : null,
+      parentElement: { id: "tool-row", parentElement: window },
       measureInWindow(callback: (x: number, y: number, width: number, height: number) => void) {
       deliver(() => callback(left, 100, visible() ? 600 : 0, visible() ? 28 : 0));
     } };
@@ -102,6 +104,44 @@ beforeEach(() => {
 });
 
 describe("opt-in general rollups", () => {
+  it.each(["ios", "android"])("finds the public native viewport ancestor on %s", (platform) => {
+    (globalThis as { __rnMockOS?: string }).__rnMockOS = platform;
+    const document = {};
+    const root = { id: "workspace", parentElement: null, ownerDocument: document };
+    const first = { id: "agent-chat-scroll-native-virtualized", parentElement: root, ownerDocument: document };
+    const second = { ...first };
+    expect(toolRollupWindow({ parentElement: { id: "tool-row", parentElement: first } })).toBe(first);
+    expect(toolRollupWindow({ parentElement: second })).toBe(second);
+    expect(toolRollupWindow(first)).toBe(first);
+    expect(toolRollupWindow(root)).toBeNull();
+  });
+
+  it("keeps legacy native refs and missing viewport markers on the existing fallback", () => {
+    expect(toolRollupWindow(null)).toBeNull();
+    expect(toolRollupWindow({ measureInWindow() {} })).toBeNull();
+    expect(toolRollupWindow({ parentElement: { id: "unrelated", parentElement: null } })).toBeNull();
+  });
+
+  it.each([
+    ["ios", ["r"], ["b", "e"]],
+    ["android", ["r", "b", "e"], ["b", "e"]],
+    ["ios", ["r", "b", "e"], ["r", "b", "e"]],
+  ] as const)("isolates public native viewport windows on %s: %j / %j", async (platform, left, right) => {
+    (globalThis as { __rnMockOS?: string }).__rnMockOS = platform;
+    const top = { id: "agent-chat-scroll-native-virtualized" };
+    const bottom = { id: "agent-chat-scroll-native-virtualized" };
+    let r!: ReturnType<typeof TestRenderer.create>;
+    await act(async () => { r = mount(frame(pane("left", [...left]), pane("right", [...right])),
+      measuredColumns(Array(left.length + right.length).fill(0), undefined, undefined,
+        [...left.map(() => top), ...right.map(() => bottom)])); });
+    expect(paneSummaries(r, "left").map((row) => row.props.accessibilityLabel))
+      .toEqual([`Called ${left.length} ${left.length === 1 ? "tool" : "tools"}`]);
+    expect(paneSummaries(r, "right").map((row) => row.props.accessibilityLabel)).toEqual([`Called ${right.length} tools`]);
+    await act(async () => paneSummaries(r, "right")[0]!.props.onPress());
+    expect(paneCards(r, "right").map((row) => row.props.data.callId)).toEqual(right);
+    expect(paneCards(r, "left").map((row) => row.props.data.callId)).toEqual(left[0] === right[0] ? left : []);
+  });
+
   it.each([
     [["r", "b", "e"], ["b", "e"]],
     [["r"], ["b", "e"]],
@@ -155,6 +195,35 @@ describe("opt-in general rollups", () => {
     await act(async () => paneSummaries(r, "right")[0]!.props.onPress());
     expect(paneCards(r, "right").map((row) => row.props.data.callId)).toEqual(["b", "e"]);
     expect(paneCards(r, "left")).toHaveLength(0);
+  });
+
+  it("isolates a retained zero-sized native view from a newly mounted adjacent call", async () => {
+    const top = { id: "agent-chat-scroll-native-virtualized" };
+    const bottom = { id: "agent-chat-scroll-native-virtualized" };
+    let hidden = false, next = 0;
+    let r!: ReturnType<typeof TestRenderer.create>;
+    await act(async () => { r = mount(pane("left", ["r"]), { createNodeMock(element) {
+      const props = element.props as { dataSet?: { bcroot?: unknown } };
+      if (!props.dataSet || !("bcroot" in props.dataSet)) return null;
+      const owner = next++ === 0 ? top : bottom;
+      return { parentElement: owner,
+        measureInWindow(callback: (x: number, y: number, width: number, height: number) => void) {
+          const visible = owner !== top || !hidden;
+          callback(0, owner === top ? 100 : 500, visible ? 600 : 0, visible ? 28 : 0);
+        } };
+    } }); });
+    expect(paneSummaries(r, "left")[0]!.props.accessibilityLabel).toBe("Called 1 tool");
+    hidden = true;
+    await act(async () => {
+      const root = paneOf(r, "left").findAll((node) => node.type as unknown === "View" && node.props.dataSet?.bcroot !== undefined)[0]!;
+      root.props.onLayout();
+      r.update(frame(pane("left", ["r"]), pane("right", ["b", "e"])));
+    });
+    expect(paneSummaries(r, "right").map((row) => row.props.accessibilityLabel)).toEqual(["Called 2 tools"]);
+    await act(async () => paneSummaries(r, "right")[0]!.props.onPress());
+    expect(paneCards(r, "right").map((row) => row.props.data.callId)).toEqual(["b", "e"]);
+    await act(async () => r.update(pane("right", ["b", "e"])));
+    expect(paneSummaries(r, "right")[0]!.props.accessibilityLabel).toBe("Called 2 tools");
   });
 
   it("uses asynchronously delivered native bounds after an initially unmeasured render", async () => {

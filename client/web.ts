@@ -13,10 +13,18 @@ import { hasActiveDetailsKeyboard } from "./details/keyboard";
 
 export { PREVIEW_REVEAL } from "./ui/tokens/motion";
 
-/** The observed 0.12 viewport node identifies a mounted chat, including stacked panes. */
+/** Containing chat identity; native ancestry is public on React Native 0.82+. */
 export function toolRollupWindow(node: unknown): object | null {
-  if (Platform.OS !== "web") return null;
-  return (node as Element | null)?.closest?.('[data-testid="agent-chat-scroll"]') ?? null;
+  if (Platform.OS === "web") {
+    return (node as Element | null)?.closest?.('[data-testid="agent-chat-scroll"]') ?? null;
+  }
+  // Paseo 0.13 exposes nativeID as the public element.id. Older refs lack
+  // parentElement and return null, preserving the measured-column fallback.
+  type NativeElement = { id?: string; parentElement?: NativeElement | null };
+  for (let element = node as NativeElement | null; element; element = element.parentElement ?? null) {
+    if (element.id === "agent-chat-scroll-native-virtualized") return element;
+  }
+  return null;
 }
 
 /**
