@@ -83,23 +83,18 @@ limits below.
 
 ## Development checks
 
-From the repository root, with Node and an installed Chrome/Chromium:
+From the repository root, with Node:
 
 ```sh
 npm run typecheck
 npm test
 npm run build:client
 npm run check:hermes
-npm ci --prefix .showcase
-CHROME_PATH=/path/to/chrome node .showcase/tools/rollups-smoke.mjs
 ```
 
-The smoke uses offline fixtures and real summary/card components in light/dark
-at desktop and 440px widths. It checks empty wrapper height, expands all seven
-cards including a failed call, retains running counts, recollapses, and
-checks for browser errors. Captures go to `.showcase/out/rollups`. The simulated
-Paseo 0.12 wrapper is not a deployed SDK integration or a native-device test.
-Unit tests separately cover source boundaries, inverted mounting, every tool
+The browser smoke that used to live in `.showcase/tools/rollups-smoke.mjs` went
+with the showcase when upstream moved media production out of this repository.
+Unit tests cover source boundaries, inverted mounting, every tool
 category/outcome, active permission controls, independent pane windows, async
 measurements, ambiguous-copy fallback, remounts, Off/toggle behavior and
 incomplete history pages. See [development guidance](development.md) for the
