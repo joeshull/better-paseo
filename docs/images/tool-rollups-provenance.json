@@ -1,0 +1,84 @@
+{
+  "capturedAt": "2026-10-23",
+  "sourceSha": "096d80de3036eb43bdb1e50b2518dd79f0970dd9",
+  "sourceTreeClean": true,
+  "sourceTrackedChanges": [],
+  "surface": "Offline React Native Web fixture; no user session; not native device acceptance",
+  "command": "node .showcase/tools/rollups-smoke.mjs",
+  "browser": "Google Chrome for Testing 156.0.8078.4",
+  "environment": "CHROME_PATH selected the installed Chromium executable",
+  "defaultTheme": "light",
+  "darkMedia": "(prefers-color-scheme: dark)",
+  "captureSources": [
+    {
+      "path": ".showcase/s7-groups.tsx",
+      "sha256": "97fcc29afea640632905ce89c0c459c6da2ee6467b8784dbdec4de1c2785f6e0"
+    },
+    {
+      "path": ".showcase/tools/rollups-smoke.mjs",
+      "sha256": "8a4e02b827ca5f85b225bfdbc47ddcc475db5d21aba13962e6eec38cbf4a8d43"
+    }
+  ],
+  "assets": [
+    {
+      "path": "docs/images/tool-rollups-light-collapsed.png",
+      "scene": "shot-s7-rollups",
+      "theme": "light",
+      "state": "collapsed",
+      "viewport": {
+        "width": 1200,
+        "height": 1100
+      },
+      "scale": 1,
+      "width": 940,
+      "height": 148,
+      "capturedAt": "2026-10-23T05:07:24.169Z",
+      "sha256": "a3566843ee754bb19340c4c6428264286c2d5dbb03460fa0bb3af9b85bf9461e"
+    },
+    {
+      "path": "docs/images/tool-rollups-light-expanded.png",
+      "scene": "shot-s7-rollups",
+      "theme": "light",
+      "state": "expanded",
+      "viewport": {
+        "width": 1200,
+        "height": 1100
+      },
+      "scale": 1,
+      "width": 940,
+      "height": 444,
+      "capturedAt": "2026-10-23T05:07:24.306Z",
+      "sha256": "591aa12f0baacc91dc8b43317d98d4f3cb2ddf1d6c3b315312424c821194e0c0"
+    },
+    {
+      "path": "docs/images/tool-rollups-dark-collapsed.png",
+      "scene": "shot-s7-rollups",
+      "theme": "dark",
+      "state": "collapsed",
+      "viewport": {
+        "width": 1200,
+        "height": 1100
+      },
+      "scale": 1,
+      "width": 940,
+      "height": 148,
+      "capturedAt": "2026-10-23T05:07:21.269Z",
+      "sha256": "1d60f7448e7f8b7142fe025658797f6aed9ecc2a27e41ca8f6addb187ee2c094"
+    },
+    {
+      "path": "docs/images/tool-rollups-dark-expanded.png",
+      "scene": "shot-s7-rollups",
+      "theme": "dark",
+      "state": "expanded",
+      "viewport": {
+        "width": 1200,
+        "height": 1100
+      },
+      "scale": 1,
+      "width": 940,
+      "height": 444,
+      "capturedAt": "2026-10-23T05:07:21.406Z",
+      "sha256": "f32bd5a2c0816c196d5fdbd1e2c62a88bd98d8b2aadfdfd907bd6de8dba99c7e"
+    }
+  ]
+}

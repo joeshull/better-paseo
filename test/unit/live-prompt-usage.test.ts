@@ -42,6 +42,7 @@ vi.mock("../../client/components/theme-tokens", () => ({
     typography: { block: { rowHeight: { compact: 22, desktop: 26 }, caption: { size: 11 } } },
   }),
 }));
+vi.mock("../../client/web", () => ({ toolRollupWindow: () => null }));
 vi.mock("../../client/components/tool-callouts", () => ({ ToolCallout: () => null }));
 vi.mock("../../client/components/reasoning-trace", () => ({ ReasoningCard: () => null }));
 vi.mock("../../client/components/task-list", () => ({

@@ -20,6 +20,7 @@ import { embeddedFontsRpc } from "./shared/font-rpc";
 import { markBitmapsRpc } from "./shared/mark-rpc";
 import { setMarkLoader } from "./client/components/marks";
 import { contributeTasks } from "./client/tasks/contribute";
+import { installToolRollupSpacing } from "./client/web";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -68,6 +69,7 @@ export default function contribute(client: PluginClientContext) {
   const removeChatFind = followChat(installChatFind);
   // A clicked row, chip or button keeps no focus ring; Tab focus does.
   const removeFocusRing = installPointerFocusRing();
+  const removeRollupSpacing = installToolRollupSpacing();
 
   // Configuration lives in the host Settings area: one page, with the chat
   // options and the Tasks board's as its two halves.
@@ -304,6 +306,7 @@ export default function contribute(client: PluginClientContext) {
     removeFonts();
     setMarkLoader(null);
     removeFocusRing();
+    removeRollupSpacing();
     removeChatFind();
     removeNotificationTransformer();
     removeToolTransformer();

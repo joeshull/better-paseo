@@ -6,6 +6,9 @@ import { ChatComposerContext, type ComposerTimelineItemProps as PluginTimelineIt
 import type { PluginTheme } from "@getpaseo/plugin";
 import { useThemeTokens } from "./components/theme-tokens";
 import { ToolCallout } from "./components/tool-callouts";
+import { ToolRollup, ToolRollupControls } from "./components/tool-rollup";
+import { toolRollupWindow } from "./web";
+import { useToolRollupPosition, type ToolRollupPosition } from "./state/tool-rollup-order";
 import { ReasoningCard } from "./components/reasoning-trace";
 import { createReasoningSegmenter } from "./reasoning/segment";
 import { useReasoningKey } from "./reasoning/key";
@@ -161,8 +164,10 @@ function BlockPlacement({ agentId, timestamp, kind, children }: {
   return <BlockPlacementContext.Provider value={value}>{children}</BlockPlacementContext.Provider>;
 }
 
-function LiveToolCallRendererBody(props: PluginTimelineItemProps<LiveToolCallPayload>) {
-  const { agentId, item, theme, layout, timestamp } = props;
+type ToolRendererProps = PluginTimelineItemProps<LiveToolCallPayload> & { rollup?: ToolRollupPosition | null };
+
+function LiveToolCallRendererBody(props: ToolRendererProps) {
+  const { agentId, item, theme, layout, timestamp, rollup } = props;
   const probe = probeCard(
     "tool_call",
     item.data.callId ?? item.data.name,
@@ -191,12 +196,17 @@ function LiveToolCallRendererBody(props: PluginTimelineItemProps<LiveToolCallPay
   // below it kept its gap as if it were the newest row. A call already
   // finished as its row mounts is replayed history (see `timeline-order.ts`).
   const rootRef = useRef<View>(null);
+  const measureWindow = useCallback(() => toolRollupWindow(rootRef.current), []);
   // Only a stacking host's compensation depends on whether a row comes next.
   const hostStacks = useHostStacksRows();
-  const { group, anythingBelow, rowBelow, copiesBelow, copiesBelowHeight } = useTimelineToolGroup(
+  const { group, anythingBelow, rowBelow, copiesBelow, copiesBelowHeight, rollupHead, onLayout } = useTimelineToolGroup(
     agentId, at, view, data.phase === "complete", rootRef, hostStacks && preferences.compactRowSpacing,
-    timestamp.getTime(),
+    timestamp.getTime(), rollup, measureWindow,
   );
+  const [rollupExpanded, setRollupExpanded] = useDisclosure(`${agentId}:tool-rollup:${rollupHead ?? data.callId}`, false);
+  const [rollupControlsVisible, setRollupControlsVisible] = useState(false);
+  const showCard = rollupHead ? rollupExpanded || rollupControlsVisible : group !== null;
+  const showSummary = Boolean(rollupHead && group);
   const groupFailed = group?.some((call) => call.status === "failed") ?? false;
 
   // The daemon side owns the shell, so revealing a file is one RPC. Paths
@@ -259,29 +269,35 @@ function LiveToolCallRendererBody(props: PluginTimelineItemProps<LiveToolCallPay
   return (
     <View
       ref={rootRef}
-      {...surfaceProps(itemRootFont(preferences.uiFont), pluginRoot)}
+      onLayout={onLayout}
+      {...surfaceProps(itemRootFont(preferences.uiFont), pluginRoot,
+        Platform.OS === "web" && rollupHead && !showCard && !showSummary
+          ? { dataSet: { bcrollupempty: "true" } } as import("react-native").ViewProps : {})}
       {...probe.viewProps}
-      style={group === null ? undefined : rowGapStyle(
+      style={!showCard && !showSummary ? undefined : rowGapStyle(
         compensatesRow(preferences.compactRowSpacing, anythingBelow, rowBelow, hostStacks),
         hostStacks ? 0 : copiesBelow, copiesBelowHeight,
       )}
     >
-      {group !== null ? (
+      {rollupHead ? <ToolRollupControls view={view} onChange={setRollupControlsVisible} /> : null}
+      {showCard || showSummary ? (
         <>
           {probe.node}
           <PreferenceSyncSlot />
+          {showSummary && group ? <ToolRollup calls={group} expanded={rollupExpanded}
+            onExpandedChange={setRollupExpanded} tokens={tokens} compact={layout.compact} /> : null}
           <PathContext.Provider value={pathContext}>
-            <ToolCallout
+            {showCard ? <ToolCallout
               data={view}
               previewKey={`${disclosureKey}:preview`}
-              groupCalls={group.length > 1 ? group : undefined}
+              groupCalls={!rollupHead && group && group.length > 1 ? group : undefined}
               tokens={tokens}
               compact={layout.compact}
-              expanded={expanded}
+              expanded={expanded || rollupControlsVisible}
               onExpandedChange={setExpanded}
               imageFile={imageFile}
               requestImage={readsImage ? markPreviewed : undefined}
-            />
+            /> : null}
           </PathContext.Provider>
         </>
       ) : null}
@@ -892,7 +908,7 @@ function LiveUserMessageRendererBody({
 // `addTimelineRenderer` requires `typeof Component === "function"` and
 // rejects the object `memo` returns, which drops every contribution in
 // `contribute`. The wrapper renders one element; the body bails out.
-const ToolCallMemo = memo(LiveToolCallRendererBody, toolPropsEqual);
+const ToolCallMemo = memo(LiveToolCallRendererBody, (a, b) => a.rollup === b.rollup && toolPropsEqual(a, b));
 const ReasoningMemo = memo(LiveReasoningRendererBody, reasoningPropsEqual);
 const TodoMemo = memo(LiveTodoRendererBody, todoPropsEqual);
 const AssistantMemo = memo(LiveAssistantRendererBody, assistantPropsEqual);
@@ -900,24 +916,31 @@ const NoticeMemo = memo(LiveNoticeRendererBody, noticePropsEqual);
 const UserMessageMemo = memo(LiveUserMessageRendererBody, userMessagePropsEqual);
 
 /** A plain agent message reaches the transformer without its sender; its row reads it back. */
-function SenderlessAgentMessage(props: PluginTimelineItemProps<LiveToolCallPayload> & { callId: string }) {
-  const { callId, ...rest } = props;
+function SenderlessAgentMessage(props: PluginTimelineItemProps<LiveToolCallPayload> & { callId: string; rollups: boolean }) {
+  const { callId, rollups, ...rest } = props;
   const sender = useAgentMessageSender(props.agentId, callId);
   const item = useMemo(() => (sender ? { ...props.item, data: { ...props.item.data, agentMessage: sender } } : props.item),
     [props.item, sender]);
-  return <ToolCallMemo {...rest} item={item} />;
+  return rollups ? <RollupToolCall {...rest} item={item} /> : <ToolCallMemo {...rest} item={item} />;
 }
 
 export function LiveToolCallRenderer(props: PluginTimelineItemProps<LiveToolCallPayload>) {
+  const preferences = useEnhancerPreferences();
   const held = useHeldRow({ compact: props.layout.compact, window: true });
   if (held) return held;
   const data = props.item.data;
   return <BlockPlacement agentId={props.agentId} timestamp={props.timestamp} kind="tool">
     <ChatComposerContext.Provider value={props.composer}>
       {data.name === "agent_message" && !data.agentMessage && data.callId
-        ? <SenderlessAgentMessage {...props} callId={data.callId} /> : <ToolCallMemo {...props} />}
+        ? <SenderlessAgentMessage {...props} callId={data.callId} rollups={preferences.toolCallRollups} />
+        : preferences.toolCallRollups ? <RollupToolCall {...props} /> : <ToolCallMemo {...props} />}
     </ChatComposerContext.Provider>
   </BlockPlacement>;
+}
+
+function RollupToolCall(props: PluginTimelineItemProps<LiveToolCallPayload>) {
+  const position = useToolRollupPosition(props.agentId, props.item.data.callId);
+  return <ToolCallMemo {...props} rollup={position} />;
 }
 
 export function LiveReasoningRenderer(props: PluginTimelineItemProps<LiveReasoningPayload>) {
