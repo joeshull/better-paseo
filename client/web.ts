@@ -56,6 +56,41 @@ export function bindBoardRefreshShortcut(node: unknown, refresh: () => void): ()
   return () => doc.removeEventListener("keydown", keydown, true);
 }
 
+/** Containing chat identity; native ancestry is public on React Native 0.82+. */
+export function toolRollupWindow(node: unknown): object | null {
+  if (Platform.OS === "web") {
+    return (node as Element | null)?.closest?.('[data-testid="agent-chat-scroll"]') ?? null;
+  }
+  // Paseo 0.13 exposes nativeID as the public element.id. Older refs lack
+  // parentElement and return null, preserving the measured-column fallback.
+  type NativeElement = { id?: string; parentElement?: NativeElement | null };
+  for (let element = node as NativeElement | null; element; element = element.parentElement ?? null) {
+    if (element.id === "agent-chat-scroll-native-virtualized") return element;
+  }
+  return null;
+}
+
+/**
+ * ponytail: Paseo 0.12 owns a 16pt margin outside every plugin row. A zero
+ * height child cannot cancel it with a negative margin (the wrapper clamps
+ * at zero). On web/desktop hide only the wrapper of our empty rollup members,
+ * including the host's display:contents bridge. Grouping itself is native.
+ * Native spacing hosts retain these gaps; upgrade to a host API for hiding a
+ * source slot (or source-preserving grouped projection) to remove them there.
+ */
+export function installToolRollupSpacing(): () => void {
+  if (Platform.OS !== "web" || typeof document === "undefined") return () => {};
+  const style = document.createElement("style");
+  style.textContent = `
+    div:has(> [data-bcrollupempty="true"]),
+    div:has(> [style*="display: contents"] > [data-bcrollupempty="true"]) {
+      display: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+  return () => style.remove();
+}
+
 /** The selection bar floats outside a preview but acts on its text, so it counts as part of it. */
 function onSelectionBar(target: EventTarget | null): boolean {
   return Boolean((target as Element | null)?.closest?.(SELECTION_BAR_SELECTOR));
